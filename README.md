@@ -82,7 +82,7 @@ Displays standardized conversion metrics and cross-activity budget equivalencies
 ### 7. About & Project Vision
 Overview of developer credentials, tech stack choices, and underlying design philosophy.
 
-![About Screen](./WhatsApp%20Image%202026-09-19%20at%2012.07.05%20AM.jpeg)
+![About Screen](https://github.com/user-attachments/assets/ef765b37-153b-4262-a767-ace556ae9f43)
 
 ---
 
