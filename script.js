@@ -2242,3 +2242,497 @@
 
   document.addEventListener("DOMContentLoaded", init);
 })();
+/* ============================================================================
+   PLANET PULSE — ADDITIONS (load AFTER script.js)
+   Reload animation · guided tour · count-up numbers · scroll reveal · tilt ·
+   ripple · particle background · confetti on new badges · daily tip ·
+   keyboard shortcuts · About-photo fallback fix
+   Everything here works through the DOM, so script.js needs no changes.
+   ============================================================================ */
+(function () {
+  "use strict";
+
+  const $ = (s) => document.querySelector(s);
+  const $$ = (s) => Array.from(document.querySelectorAll(s));
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const TOUR_KEY = "planetpulse.tour.v1";
+  const getFlag = () => { try { return localStorage.getItem(TOUR_KEY); } catch (e) { return null; } };
+  const setFlag = (v) => { try { localStorage.setItem(TOUR_KEY, v); } catch (e) {} };
+
+  function toast(msg) {
+    const box = $("#toast-container"); if (!box) return;
+    const el = document.createElement("div");
+    el.className = "toast"; el.textContent = msg;
+    box.appendChild(el); setTimeout(() => el.remove(), 4000);
+  }
+
+  /* ==========================================================================
+     1. RELOAD / INTRO ANIMATION
+     ========================================================================== */
+  const t0 = performance.now();
+  document.body.classList.add("pp-loading");
+  const msgs = ["Warming up the planet…", "Loading emission factors…", "Counting your carbon…", "Almost there…"];
+  let mi = 0;
+  const msgTimer = setInterval(() => { const m = $("#pp-pre-msg"); if (m) m.textContent = msgs[++mi % msgs.length]; }, 420);
+
+  function hidePreloader() {
+    const p = $("#pp-preloader"); if (!p) return;
+    clearInterval(msgTimer);
+    p.classList.add("done");
+    document.body.classList.remove("pp-loading");
+    setTimeout(() => { p.remove(); maybePromptTour(); }, 750);
+  }
+  const finish = () => setTimeout(hidePreloader, Math.max(0, 1500 - (performance.now() - t0)));
+  if (document.readyState === "complete") finish(); else window.addEventListener("load", finish);
+
+  /* ==========================================================================
+     2. HEADER BUTTONS (tour + shortcuts)
+     ========================================================================== */
+  const actions = $(".header-actions");
+  if (actions) {
+    actions.insertAdjacentHTML("afterbegin",
+      '<button class="icon-btn pp-hdr-btn" id="pp-tour-btn" title="Website tour (T)" aria-label="Start website tour">🧭<span class="pp-lbl"> Tour</span></button>' +
+      '<button class="icon-btn pp-hdr-btn" id="pp-help-btn" title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts">⌨<span class="pp-lbl"> Keyboard shortcuts</span></button>');
+    if (!getFlag()) $("#pp-tour-btn").classList.add("pulse");
+  }
+
+  /* ==========================================================================
+     3. GUIDED TOUR
+     ========================================================================== */
+  const STEPS = [
+    { tab: "dashboard", title: "Welcome to Planet Pulse 🌍", text: "This quick tour shows every feature. Use Next / Back, the arrow keys, or skip at any time." },
+    { tab: "dashboard", sel: "#tabs", title: "Navigation", text: "Seven sections: Dashboard, Log Activity, History, Target, Simulator, Factors and About. Keys 1–7 jump between them." },
+    { tab: "dashboard", sel: "#target-banner", title: "Weekly target banner", text: "Your week so far against your CO₂ target. It turns amber near the limit and red when exceeded; the marker shows an even daily pace." },
+    { tab: "dashboard", sel: ".score-panel", title: "Eco Score", text: "A 0–100 grade blending target adherence, logging consistency and how clean your activity mix is." },
+    { tab: "dashboard", sel: ".streak-panel", title: "Streaks & forecast", text: "Track logging streaks, days under your daily budget, a projected week total and your unlocked badges." },
+    { tab: "dashboard", sel: ".kpi-grid", title: "Key numbers", text: "Today, this week, all-time, daily average, entry count and your biggest emitting category — all animated live." },
+    { tab: "dashboard", sel: "#view-dashboard .panel-grid", title: "Charts & breakdown", text: "A category doughnut, a 7-day bar chart versus your daily target, and a table you can switch between week, 30 days and all time." },
+    { tab: "dashboard", sel: ".heatmap-scroll", title: "Emission calendar", text: "12 weeks at a glance — darker squares are heavier days. Hover any square for the exact total." },
+    { tab: "dashboard", sel: "#badge-grid", title: "Achievements", text: "Unlock badges as you build good habits. New unlocks trigger a confetti burst 🎉" },
+    { tab: "log", sel: "#log-form", title: "Log an activity", text: "Pick a type, enter a quantity and see the CO₂e calculated live before you save. You can also add a date and note." },
+    { tab: "log", sel: "#quickadd-grid", title: "Quick add", text: "One tap logs a common activity (commute, meal, electricity) against today's date." },
+    { tab: "history", sel: ".toolbar", title: "History & filters", text: "Search, filter by type, category or date range, sort any column, edit or delete entries, and export to CSV or PDF." },
+    { tab: "target", sel: "#target-form", title: "Set your target", text: "Choose a weekly ceiling or pick a preset. Charts and the dashboard update instantly." },
+    { tab: "simulator", sel: ".sim-layout", title: "What-if simulator", text: "Slide to shift car trips to bus, swap meals, cut electricity or fly less — and see the real impact on your last 30 days." },
+    { tab: "learn", sel: "#factors-table", title: "Emission factors", text: "Every entry uses these fixed factors. You'll also find a compare tool and data controls (sample data, clear all)." },
+    { tab: "dashboard", sel: "#user-chip", title: "Your profile", text: "Click to set or change your name — it personalises the dashboard greeting and PDF reports." },
+    { tab: "dashboard", sel: "#theme-switch", title: "Light & dark mode", text: "Switch themes here, or press Shift + D." },
+    { tab: "dashboard", title: "You're all set! ✅", text: "Restart this tour any time with the 🧭 button or the T key. Press ? to see all keyboard shortcuts." }
+  ];
+
+  let idx = 0, active = false;
+  const spot = () => $("#pp-spot"), card = () => $("#pp-card");
+
+  function switchTo(tab) {
+    const b = $('.tab[data-tab="' + tab + '"]');
+    if (b && !b.classList.contains("active")) b.click();
+  }
+
+  function startTour() {
+    $("#pp-prompt").classList.remove("open");
+    $("#pp-tour-btn") && $("#pp-tour-btn").classList.remove("pulse");
+    setFlag("done"); active = true; $("#pp-tour").classList.add("open"); show(0);
+  }
+  function endTour() {
+    active = false; $("#pp-tour").classList.remove("open"); switchTo("dashboard");
+    window.scrollTo({ top: 0, behavior: reduce ? "auto" : "smooth" });
+  }
+
+  function show(i) {
+    idx = i; const s = STEPS[i], c = card();
+    switchTo(s.tab);
+    c.innerHTML =
+      '<div class="pp-step-count">Step ' + (i + 1) + " of " + STEPS.length + "</div>" +
+      "<h3>" + s.title + "</h3><p>" + s.text + "</p>" +
+      '<div class="pp-dots">' + STEPS.map((_, k) => "<i" + (k === i ? ' class="on"' : "") + "></i>").join("") + "</div>" +
+      '<div class="pp-card-actions"><button class="btn-outline small" data-a="skip">Skip tour</button><span>' +
+      '<button class="btn-outline small" data-a="prev"' + (i ? "" : " disabled") + ">Back</button> " +
+      '<button class="btn-primary small" data-a="next">' + (i === STEPS.length - 1 ? "Finish" : "Next") + "</button></span></div>";
+    c.classList.remove("in"); void c.offsetWidth; c.classList.add("in");
+    setTimeout(() => {
+      const el = s.sel && $(s.sel);
+      if (el) el.scrollIntoView({ block: "center", behavior: reduce ? "auto" : "smooth" });
+      setTimeout(place, el ? 480 : 0);
+    }, 180);
+  }
+
+  function place() {
+    if (!active) return;
+    const s = STEPS[idx], el = s.sel && $(s.sel), sp = spot(), c = card();
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const cw = Math.min(360, vw - 24); c.style.width = cw + "px";
+    const ch = c.offsetHeight;
+    if (!el || !el.offsetParent) {
+      sp.classList.add("center"); sp.style.cssText = "";
+      c.style.left = (vw - cw) / 2 + "px"; c.style.top = Math.max(12, (vh - ch) / 2) + "px";
+      return;
+    }
+    sp.classList.remove("center");
+    const r = el.getBoundingClientRect(), p = 8;
+    Object.assign(sp.style, { left: r.left - p + "px", top: r.top - p + "px", width: r.width + p * 2 + "px", height: r.height + p * 2 + "px" });
+    let top;
+    if (r.bottom + ch + 28 < vh) top = r.bottom + p + 12;
+    else if (r.top - ch - 28 > 0) top = r.top - p - 12 - ch;
+    else top = vh - ch - 16;
+    c.style.top = top + "px";
+    c.style.left = Math.min(Math.max(12, r.left), vw - cw - 12) + "px";
+  }
+
+  document.addEventListener("click", (e) => {
+    const b = e.target.closest("#pp-card [data-a]");
+    if (!b) return;
+    const a = b.dataset.a;
+    if (a === "skip") endTour();
+    else if (a === "prev" && idx > 0) show(idx - 1);
+    else if (a === "next") { if (idx >= STEPS.length - 1) endTour(); else show(idx + 1); }
+  });
+  let placeRaf;
+  const rePlace = () => { cancelAnimationFrame(placeRaf); placeRaf = requestAnimationFrame(place); };
+  window.addEventListener("resize", rePlace);
+  window.addEventListener("scroll", rePlace, { passive: true });
+
+  // Invitation prompt (first visit only; waits for the name modal to close)
+  function maybePromptTour() {
+    if (getFlag()) return;
+    const w = $("#welcome-overlay");
+    if (w && w.classList.contains("open")) {
+      const mo = new MutationObserver(() => {
+        if (!w.classList.contains("open")) { mo.disconnect(); setTimeout(maybePromptTour, 500); }
+      });
+      mo.observe(w, { attributes: true, attributeFilter: ["class"] });
+      return;
+    }
+    $("#pp-prompt").classList.add("open");
+  }
+  $("#pp-prompt-start").addEventListener("click", startTour);
+  $("#pp-prompt-skip").addEventListener("click", () => {
+    setFlag("skipped"); $("#pp-prompt").classList.remove("open");
+    toast("No problem — use the Tour button in the header whenever you want it.");
+  });
+  $("#pp-tour-btn") && $("#pp-tour-btn").addEventListener("click", startTour);
+
+  /* ==========================================================================
+     4. SHORTCUTS
+     ========================================================================== */
+  const help = $("#pp-help");
+  $("#pp-help-btn") && $("#pp-help-btn").addEventListener("click", () => help.classList.add("open"));
+  $("#pp-help-close").addEventListener("click", () => help.classList.remove("open"));
+  help.addEventListener("click", (e) => { if (e.target === help) help.classList.remove("open"); });
+
+  document.addEventListener("keydown", (e) => {
+    if (active) {
+      if (e.key === "Escape") endTour();
+      else if (e.key === "ArrowRight") { e.preventDefault(); idx >= STEPS.length - 1 ? endTour() : show(idx + 1); }
+      else if (e.key === "ArrowLeft" && idx > 0) { e.preventDefault(); show(idx - 1); }
+      return;
+    }
+    const tag = (e.target.tagName || "").toLowerCase();
+    if (tag === "input" || tag === "textarea" || tag === "select" || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.key === "Escape") { help.classList.remove("open"); $("#pp-prompt").classList.remove("open"); return; }
+    if (e.key === "?") { help.classList.toggle("open"); return; }
+    if (e.shiftKey) return;
+    const k = e.key.toLowerCase();
+    if (k === "t") startTour();
+    else if (k === "n") { switchTo("log"); setTimeout(() => $("#quantity") && $("#quantity").focus(), 120); }
+    else if (/^[1-7]$/.test(k)) { const tabs = $$(".tab"); tabs[Number(k) - 1] && tabs[Number(k) - 1].click(); }
+  });
+
+  /* ==========================================================================
+     5. COUNT-UP NUMBERS (watches the numbers script.js writes)
+     ========================================================================== */
+  const COUNT_IDS = ["kpi-today", "kpi-week", "kpi-total", "kpi-avg", "kpi-entries", "tb-current", "tb-target",
+    "score-value", "forecast-value", "streak-logging", "streak-green"];
+  function countUp(el) {
+    const txt = el.textContent.trim();
+    if (txt === el.__w || !/^-?\d+(\.\d+)?$/.test(txt)) return;
+    const to = parseFloat(txt), from = el.__shown || 0, dec = (txt.split(".")[1] || "").length;
+    cancelAnimationFrame(el.__raf);
+    el.__shown = to;
+    if (reduce || from === to) { el.__w = txt; return; }
+    const start = performance.now(), dur = 900;
+    (function step(now) {
+      const t = Math.min(1, (now - start) / dur), eased = 1 - Math.pow(1 - t, 3);
+      el.__w = (from + (to - from) * eased).toFixed(dec);
+      el.textContent = el.__w;
+      if (t < 1) el.__raf = requestAnimationFrame(step);
+    })(start);
+  }
+  const countObs = new MutationObserver((list) => list.forEach((m) => countUp(m.target.nodeType === 3 ? m.target.parentNode : m.target)));
+  COUNT_IDS.forEach((id) => { const el = document.getElementById(id); if (el) countObs.observe(el, { childList: true, characterData: true, subtree: true }); });
+
+  /* ==========================================================================
+     6. CONFETTI ON NEW ACHIEVEMENT
+     ========================================================================== */
+  const cv = $("#pp-confetti"), cx = cv.getContext("2d");
+  let parts = [], raf = 0;
+  function confetti() {
+    if (reduce) return;
+    cv.width = window.innerWidth; cv.height = window.innerHeight;
+    const cols = ["#4ade80", "#38bdf8", "#fbbf24", "#a78bfa", "#f87171"];
+    for (let i = 0; i < 150; i++) parts.push({ x: cv.width / 2, y: cv.height * 0.4, vx: (Math.random() - 0.5) * 18, vy: Math.random() * -14 - 4, s: Math.random() * 7 + 4, c: cols[i % 5], r: Math.random() * 6, l: 90 + Math.random() * 70 });
+    if (!raf) raf = requestAnimationFrame(loop);
+  }
+  function loop() {
+    cx.clearRect(0, 0, cv.width, cv.height);
+    parts = parts.filter((p) => p.l > 0);
+    parts.forEach((p) => {
+      p.vy += 0.35; p.x += p.vx; p.y += p.vy; p.vx *= 0.99; p.r += 0.2; p.l--;
+      cx.save(); cx.translate(p.x, p.y); cx.rotate(p.r);
+      cx.fillStyle = p.c; cx.globalAlpha = Math.min(1, p.l / 30);
+      cx.fillRect(-p.s / 2, -p.s / 2, p.s, p.s * 0.6); cx.restore();
+    });
+    if (parts.length) raf = requestAnimationFrame(loop); else { cx.clearRect(0, 0, cv.width, cv.height); raf = 0; }
+  }
+  const badge = document.getElementById("badge-count");
+  if (badge) {
+    let prev = null;
+    new MutationObserver(() => {
+      const n = parseInt(badge.textContent, 10) || 0;
+      if (prev !== null && n > prev) { confetti(); toast("🏅 New achievement unlocked!"); }
+      prev = n;
+    }).observe(badge, { childList: true, characterData: true, subtree: true });
+  }
+
+  /* ==========================================================================
+     7. SCROLL REVEAL, TILT, RIPPLE, SCROLL PROGRESS
+     ========================================================================== */
+  const io = new IntersectionObserver((es) => es.forEach((e) => {
+    if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); }
+  }), { threshold: 0.08 });
+  $$(".panel, .kpi-card, .target-banner, .badge-card, .streak-card").forEach((el, i) => {
+    el.classList.add("pp-reveal"); el.style.setProperty("--d", (i % 6) * 60 + "ms"); io.observe(el);
+  });
+
+  const TILT = ".kpi-card, .streak-card, .equiv-card, .stack-item, .about-stat, .offset-card";
+  document.addEventListener("mousemove", (e) => {
+    if (reduce || !e.target.closest) return;
+    const c = e.target.closest(TILT); if (!c) return;
+    const r = c.getBoundingClientRect(), x = (e.clientX - r.left) / r.width - 0.5, y = (e.clientY - r.top) / r.height - 0.5;
+    c.style.transform = "perspective(600px) rotateX(" + -y * 9 + "deg) rotateY(" + x * 9 + "deg) translateY(-3px)";
+  });
+  document.addEventListener("mouseout", (e) => {
+    const c = e.target.closest && e.target.closest(TILT);
+    if (c && !c.contains(e.relatedTarget)) c.style.transform = "";
+  });
+
+  document.addEventListener("click", (e) => {
+    const b = e.target.closest(".btn-primary, .btn-outline, .tab, .chip, .preset-btn, .quickadd-btn, .scope-btn");
+    if (!b || b.disabled) return;
+    const r = b.getBoundingClientRect(), d = Math.max(r.width, r.height) * 2, s = document.createElement("span");
+    s.className = "pp-ripple";
+    s.style.cssText = "width:" + d + "px;height:" + d + "px;left:" + (e.clientX - r.left - d / 2) + "px;top:" + (e.clientY - r.top - d / 2) + "px";
+    b.appendChild(s); setTimeout(() => s.remove(), 600);
+  });
+
+  const bar = $("#pp-scroll-progress"), top = $("#pp-top");
+  function onScroll() {
+    const h = document.documentElement.scrollHeight - window.innerHeight;
+    bar.style.width = (h > 0 ? (window.scrollY / h) * 100 : 0) + "%";
+    top.classList.toggle("show", window.scrollY > 500);
+  }
+  window.addEventListener("scroll", onScroll, { passive: true }); onScroll();
+  top.addEventListener("click", () => window.scrollTo({ top: 0, behavior: reduce ? "auto" : "smooth" }));
+
+  /* ==========================================================================
+     8. PARTICLE BACKGROUND
+     ========================================================================== */
+  if (!reduce) {
+    const bg = $("#pp-bg"), bx = bg.getContext("2d");
+    let W, H, dots = [];
+    const size = () => {
+      W = bg.width = window.innerWidth; H = bg.height = window.innerHeight;
+      dots = Array.from({ length: Math.min(55, Math.floor(W / 24)) }, () => ({ x: Math.random() * W, y: Math.random() * H, vx: (Math.random() - 0.5) * 0.3, vy: (Math.random() - 0.5) * 0.3 }));
+    };
+    size(); window.addEventListener("resize", size);
+    (function draw() {
+      if (!document.hidden) {
+        bx.clearRect(0, 0, W, H);
+        dots.forEach((a, i) => {
+          a.x = (a.x + a.vx + W) % W; a.y = (a.y + a.vy + H) % H;
+          bx.fillStyle = "rgba(74,222,128,.7)"; bx.beginPath(); bx.arc(a.x, a.y, 1.6, 0, 7); bx.fill();
+          for (let j = i + 1; j < dots.length; j++) {
+            const b = dots[j], d = Math.hypot(a.x - b.x, a.y - b.y);
+            if (d < 120) { bx.strokeStyle = "rgba(56,189,248," + 0.2 * (1 - d / 120) + ")"; bx.beginPath(); bx.moveTo(a.x, a.y); bx.lineTo(b.x, b.y); bx.stroke(); }
+          }
+        });
+      }
+      requestAnimationFrame(draw);
+    })();
+  }
+
+  /* ==========================================================================
+     9. DAILY ECO TIP
+     ========================================================================== */
+  const TIPS = [
+    "A single non-veg meal swapped for a veg one saves about 1.5 kg CO₂e.",
+    "Unplug chargers and idle devices — standby power adds up across a month.",
+    "Taking the bus instead of the car cuts travel emissions by roughly 60%.",
+    "Set your AC 1–2 °C higher; every kWh saved avoids 0.8 kg CO₂e.",
+    "Combine errands into one trip — short cold-start car journeys are the least efficient.",
+    "Air-dry laundry when you can; dryers are among the hungriest home appliances.",
+    "Trains beat flights for most trips under 800 km.",
+    "LED bulbs use about 80% less electricity than incandescent ones.",
+    "Plan meals to cut food waste — wasted food carries wasted carbon.",
+    "Carpool two days a week and halve those commute emissions."
+  ];
+  const greet = $("#dashboard-greeting");
+  if (greet) {
+    greet.insertAdjacentHTML("afterend", '<div class="pp-tip" id="pp-tip"><span><b>Tip of the day</b><em id="pp-tip-text"></em></span><button class="btn-outline small" id="pp-tip-next">Another tip</button></div>');
+    let ti = Math.floor(Date.now() / 86400000) % TIPS.length;
+    const setTip = () => { $("#pp-tip-text").textContent = TIPS[ti]; };
+    setTip();
+    $("#pp-tip-next").addEventListener("click", () => { ti = (ti + 1) % TIPS.length; setTip(); });
+  }
+
+  /* ==========================================================================
+     10. FIX: About photo fallback (element was missing from the HTML)
+     ========================================================================== */
+  const photo = $("#about-photo");
+  if (photo) photo.addEventListener("error", () => {
+    if (document.getElementById("about-photo-fallback")) return;
+    const f = document.createElement("div");
+    f.className = "pp-photo-fallback"; f.id = "about-photo-fallback"; f.textContent = "AD";
+    photo.parentNode.appendChild(f);
+  });
+
+  /* ==========================================================================
+     11. ADVANCED FEATURES  (v2)
+     Command palette · Living Planet · weekly challenges · voice logging ·
+     shareable eco card · backup/restore · cursor spotlight
+     ========================================================================== */
+  const DATA_KEY = "carbonledger.data.v1";
+  const txt = (id) => (document.getElementById(id) || {}).textContent || "";
+
+  /* ---------- Cursor spotlight on panels ---------- */
+  document.addEventListener("mousemove", (e) => {
+    const p = e.target.closest && e.target.closest(".panel"); if (!p) return;
+    const r = p.getBoundingClientRect();
+    p.style.setProperty("--mx", e.clientX - r.left + "px"); p.style.setProperty("--my", e.clientY - r.top + "px");
+  });
+
+  /* ---------- Voice logging (Web Speech API) ---------- */
+  function voiceLog() {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) { toast("Voice input isn't supported in this browser — try Chrome or Edge."); return; }
+    $$(".tab")[1].click();
+    const r = new SR(); r.lang = "en-IN"; r.interimResults = false;
+    toast("🎙 Listening… try “12 kilometres by car” or “two veg meals”");
+    r.onresult = (e) => applyVoice(e.results[0][0].transcript);
+    r.onerror = () => toast("Couldn't hear that — please try again.");
+    r.start();
+  }
+  function applyVoice(s) {
+    s = s.toLowerCase();
+    const W = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, twenty: 20, thirty: 30, fifty: 50, hundred: 100 };
+    let n = (s.match(/\d+(\.\d+)?/) || [])[0];
+    if (!n) { const w = Object.keys(W).find((k) => new RegExp("\\b" + k + "\\b").test(s)); n = w ? W[w] : 1; }
+    const t = /non[- ]?veg|meat|chicken|mutton|fish|egg/.test(s) ? "nonveg_meal" : /veg|salad|dal|paneer/.test(s) ? "veg_meal"
+      : /flight|flew|fly|plane/.test(s) ? "flight" : /bus/.test(s) ? "bus" : /electric|kwh|power|unit/.test(s) ? "electricity"
+      : /car|drive|drove|taxi|auto/.test(s) ? "car" : null;
+    if (!t) { toast("Heard “" + s + "” but couldn't match an activity."); return; }
+    const sel = $("#activity-type"); sel.value = t; sel.dispatchEvent(new Event("change"));
+    const q = $("#quantity"); q.value = n; q.dispatchEvent(new Event("input"));
+    toast("🎙 Heard “" + s + "” — review it, then press Add Entry.");
+  }
+
+  /* ---------- Shareable eco card (PNG) ---------- */
+  function shareCard() {
+    const c = document.createElement("canvas"); c.width = c.height = 1080; const x = c.getContext("2d");
+    const g = x.createLinearGradient(0, 0, 1080, 1080); g.addColorStop(0, "#07100d"); g.addColorStop(1, "#0f3a2c");
+    x.fillStyle = g; x.fillRect(0, 0, 1080, 1080);
+    x.fillStyle = "rgba(74,222,128,.12)"; x.beginPath(); x.arc(880, 200, 320, 0, 7); x.fill();
+    x.fillStyle = "#e8f2ee"; x.font = "700 44px sans-serif"; x.fillText("PLANET", 80, 120);
+    x.fillStyle = "#4ade80"; x.fillText("PULSE", 285, 120);
+    const nm = txt("user-chip-name").trim();
+    x.fillStyle = "#8fa6a0"; x.font = "32px sans-serif"; x.fillText((!nm || nm === "Guest" ? "My" : nm + "'s") + " eco card", 80, 190);
+    x.fillStyle = "#4ade80"; x.font = "700 300px sans-serif"; x.fillText(txt("score-grade") || "—", 80, 560);
+    x.fillStyle = "#e8f2ee"; x.font = "700 60px sans-serif"; x.fillText("Eco Score " + txt("score-value") + "/100", 80, 650);
+    [["This week", txt("tb-current") + " kg CO₂e"], ["Weekly target", txt("tb-target") + " kg"], ["Logging streak", txt("streak-logging") + " days"]].forEach((r, i) => {
+      const y = 770 + i * 78; x.fillStyle = "#8fa6a0"; x.font = "34px sans-serif"; x.textAlign = "left"; x.fillText(r[0], 80, y);
+      x.fillStyle = "#e8f2ee"; x.font = "700 40px sans-serif"; x.textAlign = "right"; x.fillText(r[1], 1000, y);
+    });
+    x.textAlign = "left"; x.fillStyle = "#566b66"; x.font = "26px sans-serif"; x.fillText("Track your footprint with Planet Pulse", 80, 1020);
+    c.toBlob(async (b) => {
+      const f = new File([b], "planet-pulse-eco-card.png", { type: "image/png" });
+      if (navigator.canShare && navigator.canShare({ files: [f] })) { try { await navigator.share({ files: [f], title: "My Planet Pulse eco card" }); return; } catch (e) {} }
+      const a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download = f.name; document.body.appendChild(a); a.click(); a.remove();
+      toast("📸 Eco card downloaded.");
+    });
+  }
+
+  /* ---------- Backup / restore ---------- */
+  function backup() {
+    let raw = "{}"; try { raw = localStorage.getItem(DATA_KEY) || "{}"; } catch (e) {}
+    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([raw], { type: "application/json" }));
+    a.download = "planet-pulse-backup-" + new Date().toISOString().slice(0, 10) + ".json";
+    document.body.appendChild(a); a.click(); a.remove(); toast("💾 Backup downloaded.");
+  }
+  const rf = document.createElement("input"); rf.type = "file"; rf.accept = "application/json,.json"; rf.hidden = true; document.body.appendChild(rf);
+  rf.addEventListener("change", () => {
+    const f = rf.files[0]; if (!f) return;
+    f.text().then((t) => {
+      if (!Array.isArray(JSON.parse(t).entries)) throw 0;
+      localStorage.setItem(DATA_KEY, t); toast("Restored — reloading…"); setTimeout(() => location.reload(), 700);
+    }).catch(() => toast("That file isn't a valid Planet Pulse backup."));
+    rf.value = "";
+  });
+  const sn = $("#storage-note");
+  if (sn) sn.insertAdjacentHTML("beforebegin", '<div class="settings-row"><div><strong>Backup &amp; restore</strong><p class="panel-copy">Download all your data as a JSON file, or restore from a backup.</p></div><div class="pp-btn-row"><button class="btn-outline" data-pp="backup">Backup</button><button class="btn-outline" data-pp="restore">Restore</button></div></div>');
+
+  /* ---------- Command palette (Ctrl/⌘ + K) ---------- */
+  const cmdBox = $("#pp-cmd"), cmdIn = $("#pp-cmd-input"), cmdList = $("#pp-cmd-list");
+  const CMDS = [].concat(
+    ["Dashboard", "Log Activity", "History", "Target", "Simulator", "Factors", "About"].map((n, i) => ({ i: ["📊", "➕", "🗂️", "🎯", "🧪", "📐", "ℹ️"][i], t: "Go to " + n, run: () => $$(".tab")[i].click() })),
+    [["🚗", "Quick add: car commute (10 km)", 0], ["🚌", "Quick add: bus commute (10 km)", 1], ["⚡", "Quick add: home electricity (5 kWh)", 2], ["🥗", "Quick add: vegetarian meal", 3], ["🍖", "Quick add: non-veg meal", 4]]
+      .map((a) => ({ i: a[0], t: a[1], run: () => { const b = $('[data-quickadd="' + a[2] + '"]'); if (b) b.click(); } })),
+    [
+      { i: "🎙️", t: "Voice log an activity", run: voiceLog },
+      { i: "📸", t: "Download my eco card", run: shareCard },
+      { i: "💾", t: "Backup my data (JSON)", run: backup },
+      { i: "📥", t: "Restore data from backup", run: () => rf.click() },
+      { i: "🧭", t: "Start website tour", run: startTour },
+      { i: "🌗", t: "Toggle light / dark theme", run: () => { const b = $(".theme-opt:not(.active)"); if (b) b.click(); } },
+      { i: "🧪", t: "Load sample data", run: () => $("#load-sample").click() },
+      { i: "📄", t: "Export history as PDF", run: () => $("#export-pdf").click() },
+      { i: "📊", t: "Export history as CSV", run: () => $("#export-csv").click() },
+      { i: "🎉", t: "Celebrate!", run: confetti },
+      { i: "⌨️", t: "Keyboard shortcuts", run: () => help.classList.add("open") }
+    ]);
+  let sel = 0, shown = CMDS;
+  const match = (q, t) => { q = q.toLowerCase(); t = t.toLowerCase(); if (!q) return 1; if (t.includes(q)) return 2; let k = 0; for (const ch of t) if (ch === q[k]) k++; return k === q.length ? 1 : 0; };
+  function renderCmd() {
+    const q = cmdIn.value.trim();
+    shown = CMDS.map((c) => ({ c, s: match(q, c.t) })).filter((x) => x.s).sort((a, b) => b.s - a.s).map((x) => x.c);
+    sel = Math.min(sel, Math.max(0, shown.length - 1));
+    cmdList.innerHTML = shown.length ? shown.map((c, i) => '<li data-i="' + i + '"' + (i === sel ? ' class="on"' : "") + "><span>" + c.i + "</span>" + c.t + "</li>").join("") : '<li class="none">No matching command</li>';
+    const on = cmdList.querySelector(".on"); if (on) on.scrollIntoView({ block: "nearest" });
+  }
+  const openCmd = () => { cmdBox.classList.add("open"); cmdIn.value = ""; sel = 0; renderCmd(); setTimeout(() => cmdIn.focus(), 30); };
+  const closeCmd = () => cmdBox.classList.remove("open");
+  const runCmd = (i) => { const c = shown[i]; if (c) { closeCmd(); setTimeout(c.run, 90); } };
+  cmdIn.addEventListener("input", () => { sel = 0; renderCmd(); });
+  cmdIn.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowDown") { e.preventDefault(); sel = (sel + 1) % Math.max(1, shown.length); renderCmd(); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); sel = (sel - 1 + shown.length) % Math.max(1, shown.length); renderCmd(); }
+    else if (e.key === "Enter") runCmd(sel);
+    else if (e.key === "Escape") closeCmd();
+  });
+  cmdList.addEventListener("click", (e) => { const li = e.target.closest("[data-i]"); if (li) runCmd(Number(li.dataset.i)); });
+  cmdBox.addEventListener("click", (e) => { if (e.target === cmdBox) closeCmd(); });
+  document.addEventListener("keydown", (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") { e.preventDefault(); if (active) return; cmdBox.classList.contains("open") ? closeCmd() : openCmd(); }
+  });
+  const tb = $("#pp-tour-btn");
+  if (tb) tb.insertAdjacentHTML("beforebegin", '<button class="icon-btn" id="pp-cmd-btn" title="Command palette (Ctrl/⌘ + K)" aria-label="Command palette">⌘</button>');
+  const kl = $(".pp-keys"); if (kl) kl.insertAdjacentHTML("afterbegin", "<li><span><kbd>Ctrl</kbd>+<kbd>K</kbd></span> Command palette</li>");
+
+  /* ---------- One delegated handler for all data-pp buttons ---------- */
+  document.addEventListener("click", (e) => {
+    if (e.target.closest("#pp-cmd-btn")) { openCmd(); return; }
+    const b = e.target.closest("[data-pp]"); if (!b) return;
+    ({ voice: voiceLog, share: shareCard, cmd: openCmd, backup: backup, restore: () => rf.click() })[b.dataset.pp]();
+  });
+
+  /* ---------- Add the new features to the guided tour ---------- */
+  STEPS.splice(STEPS.length - 1, 0, { tab: "dashboard", title: "Command palette ⌘K", text: "Press Ctrl/⌘ + K to jump anywhere, quick-add activities, back up your data or export reports — all from the keyboard." });
+})();

@@ -768,6 +768,92 @@
 
 <div class="toast-container" id="toast-container"></div>
 
+
+<!-- ============================================================
+     PLANET PULSE — HTML ADDITIONS (3 small edits to index.html)
+
+     1) In <head>, AFTER <link rel="stylesheet" href="style.css" />, add:
+        <link rel="stylesheet" href="pp-additions.css" />
+
+     2) Paste the BLOCK below just before the first <script> tag
+        (i.e. right after <div class="toast-container" ...></div>).
+
+     3) After <script src="script.js"></script>, add:
+        <script src="pp-additions.js"></script>
+     ============================================================ -->
+
+<!-- ============== BLOCK START ============== -->
+
+<!-- Reload / intro animation -->
+<div id="pp-preloader" aria-hidden="true">
+  <div class="pp-pre-orbit">
+    <svg viewBox="0 0 64 64" width="92" height="92">
+      <defs>
+        <linearGradient id="ppl-g" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#4ade80"/><stop offset="100%" stop-color="#22a6b3"/>
+        </linearGradient>
+      </defs>
+      <circle cx="32" cy="32" r="21" fill="url(#ppl-g)"/>
+      <ellipse class="pp-pre-ring" cx="32" cy="32" rx="29" ry="11.5" fill="none" stroke="#38bdf8" stroke-width="3" transform="rotate(-24 32 32)"/>
+      <path class="pp-pre-pulse" d="M11 32h9l4-9 6 18 5-11 3.5 6H53" fill="none" stroke="#eafff4" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  </div>
+  <div class="pp-pre-title">PLANET<span>PULSE</span></div>
+  <div class="pp-pre-bar"><i></i></div>
+  <div class="pp-pre-msg" id="pp-pre-msg">Warming up the planet…</div>
+</div>
+
+<!-- Ambient layers -->
+<div class="pp-scroll-progress" id="pp-scroll-progress"></div>
+<canvas id="pp-bg" aria-hidden="true"></canvas>
+<canvas id="pp-confetti" aria-hidden="true"></canvas>
+<button class="pp-top" id="pp-top" title="Back to top" aria-label="Back to top">↑</button>
+
+<!-- Tour invitation (shown once, can be skipped) -->
+<div class="modal-overlay" id="pp-prompt">
+  <div class="modal modal-narrow">
+    <div class="welcome-logo pp-float">🧭</div>
+    <h2>Want a quick tour?</h2>
+    <p class="panel-copy">A 1-minute guided walkthrough of every feature — dashboard, logging, targets, simulator and more. You can skip it now and start it any time from the <b>🧭 Tour</b> button in the header (or press <kbd>T</kbd>).</p>
+    <div class="welcome-actions">
+      <button class="btn-primary btn-full" id="pp-prompt-start">Start the tour</button>
+      <button class="btn-outline btn-full" id="pp-prompt-skip">Skip for now</button>
+    </div>
+  </div>
+</div>
+
+<!-- Guided tour -->
+<div class="pp-tour" id="pp-tour">
+  <div class="pp-spot center" id="pp-spot"></div>
+  <div class="pp-card" id="pp-card" role="dialog" aria-live="polite"></div>
+</div>
+
+<!-- Keyboard shortcuts -->
+<div class="modal-overlay" id="pp-help">
+  <div class="modal modal-narrow" style="text-align:left">
+    <button class="modal-close" id="pp-help-close" title="Close">✕</button>
+    <h2>Keyboard shortcuts</h2>
+    <ul class="pp-keys">
+      <li><span><kbd>1</kbd>–<kbd>7</kbd></span> Switch tabs</li>
+      <li><span><kbd>N</kbd></span> New entry</li>
+      <li><span><kbd>T</kbd></span> Start website tour</li>
+      <li><span><kbd>Shift</kbd>+<kbd>D</kbd></span> Toggle theme</li>
+      <li><span><kbd>?</kbd></span> This panel</li>
+      <li><span><kbd>Esc</kbd></span> Close panels / tour</li>
+    </ul>
+  </div>
+</div>
+
+<!-- Command palette (Ctrl / ⌘ + K) -->
+<div class="modal-overlay" id="pp-cmd">
+  <div class="pp-cmd-box">
+    <input type="text" id="pp-cmd-input" placeholder="Type a command…  e.g. “bus”, “tour”, “backup”" autocomplete="off" />
+    <ul id="pp-cmd-list"></ul>
+    <div class="pp-cmd-foot"><kbd>↑</kbd> <kbd>↓</kbd> navigate · <kbd>Enter</kbd> run · <kbd>Esc</kbd> close</div>
+  </div>
+</div>
+
+<!-- ============== BLOCK END ============== -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="script.js"></script>
