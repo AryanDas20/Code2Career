@@ -95,7 +95,28 @@ a { color: inherit; text-decoration: none; }
 }
 
 .brand { display: flex; align-items: center; gap: 9px; }
-.brand-leaf { font-size: 1.25rem; }
+.brand-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+}
+.brand-logo svg { display: block; overflow: visible; }
+
+/* The pulse line draws itself in on load, then rests. */
+.brand-logo .pp-pulse {
+  stroke-dasharray: 72;
+  stroke-dashoffset: 72;
+  animation: pp-trace 1.6s ease-out 0.2s forwards;
+}
+@keyframes pp-trace { to { stroke-dashoffset: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .brand-logo .pp-pulse { animation: none; stroke-dashoffset: 0; }
+  .theme-slider { transition: none; }
+}
 .brand-text {
   font-family: var(--font-display);
   font-weight: 700;

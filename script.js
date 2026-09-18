@@ -49,6 +49,8 @@
     { label: "Starter · 60 kg",   value: 60 }
   ];
 
+  // Storage key intentionally keeps its original name so that data saved
+  // before the rename to Planet Pulse is not orphaned.
   const STORAGE_KEY = "carbonledger.data.v1";
 
   // Annual per-capita CO₂ benchmarks (tonnes → kg), widely published approximations
@@ -963,7 +965,7 @@
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "carbonledger-export.csv";
+    a.download = "planet-pulse-export.csv";
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
