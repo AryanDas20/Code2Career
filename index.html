@@ -72,6 +72,11 @@
     <div class="header-actions">
       <span class="today-chip" id="today-chip">—</span>
 
+      <button class="user-chip" id="user-chip" title="Click to edit your name">
+        <span class="user-avatar" id="user-avatar">?</span>
+        <span class="user-chip-name" id="user-chip-name">Guest</span>
+      </button>
+
       <div class="theme-switch" id="theme-switch" role="group" aria-label="Colour theme">
         <button class="theme-opt" data-theme-set="light" title="Light mode">☀<span>Light</span></button>
         <button class="theme-opt active" data-theme-set="dark" title="Dark mode">☾<span>Dark</span></button>
@@ -87,6 +92,8 @@
        DASHBOARD
        ========================================================== -->
   <section class="view active" id="view-dashboard">
+
+    <p class="dashboard-greeting" id="dashboard-greeting"></p>
 
     <!-- Weekly target banner -->
     <div class="target-banner" id="target-banner">
@@ -430,6 +437,7 @@
       <div class="toolbar-spacer"></div>
 
       <button class="btn-outline" id="export-csv">Export CSV</button>
+      <button class="btn-primary" id="export-pdf">Export PDF</button>
       <button class="btn-outline danger" id="clear-filters">Reset Filters</button>
     </div>
 
@@ -627,7 +635,7 @@
           alt="Aryan Das"
           referrerpolicy="no-referrer"
         />
-     
+        <div class="about-photo-fallback" id="about-photo-fallback" hidden>AD</div>
       </div>
 
       <div class="about-intro">
@@ -714,9 +722,54 @@
   </div>
 </footer>
 
+<!-- ============================================================
+     WELCOME / ACCOUNT MODAL
+     Asks for a name on first visit (or lets the person skip).
+     Reopens from the user chip in the header to rename or clear.
+     ============================================================ -->
+<div class="modal-overlay" id="welcome-overlay">
+  <div class="modal modal-narrow">
+    <button class="modal-close" id="welcome-close" title="Close">✕</button>
+
+    <div class="welcome-logo">
+      <svg viewBox="0 0 64 64" width="46" height="46">
+        <defs>
+          <linearGradient id="wm-planet" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#4ade80"/>
+            <stop offset="100%" stop-color="#22a6b3"/>
+          </linearGradient>
+        </defs>
+        <circle cx="32" cy="32" r="21" fill="url(#wm-planet)"/>
+        <ellipse cx="32" cy="32" rx="29" ry="11.5" fill="none" stroke="#38bdf8" stroke-width="3" transform="rotate(-24 32 32)"/>
+      </svg>
+    </div>
+
+    <h2 id="welcome-title">Welcome to Planet Pulse</h2>
+    <p class="panel-copy" id="welcome-copy">
+      Tell us your name and we'll personalise your dashboard and reports. This stays on your device only —
+      nothing is sent anywhere. You can skip this and add it later from the chip in the header.
+    </p>
+
+    <form id="welcome-form">
+      <div class="field">
+        <label for="welcome-name-input">Your name</label>
+        <input type="text" id="welcome-name-input" maxlength="40" placeholder="e.g. Aryan Das" autocomplete="off" />
+      </div>
+
+      <div class="welcome-actions">
+        <button type="submit" class="btn-primary btn-full" id="welcome-continue">Continue</button>
+        <button type="button" class="btn-outline btn-full" id="welcome-skip">Skip for now</button>
+      </div>
+    </form>
+
+    <button type="button" class="btn-outline danger welcome-forget" id="welcome-forget" hidden>Forget my name</button>
+  </div>
+</div>
+
 <div class="toast-container" id="toast-container"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="script.js"></script>
 </body>
 </html>

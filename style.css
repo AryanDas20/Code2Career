@@ -1020,6 +1020,115 @@ input[type="range"] { width: 100%; accent-color: var(--green); height: 4px; curs
 .badge-desc { display: block; font-size: 0.7rem; color: var(--text-dim); line-height: 1.35; }
 
 /* ============================================================================
+   USER ACCOUNT CHIP + GREETING
+   ============================================================================ */
+.user-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-soft);
+  border-radius: 999px;
+  padding: 5px 12px 5px 5px;
+  cursor: pointer;
+  color: var(--text);
+  max-width: 160px;
+}
+.user-chip:hover { border-color: var(--green); }
+
+.user-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--green), var(--cyan));
+  color: #04231a;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.72rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.user-chip-name {
+  font-size: 0.82rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dashboard-greeting {
+  font-size: 0.86rem;
+  color: var(--text-dim);
+  margin: 0 0 14px;
+}
+.dashboard-greeting strong { color: var(--green); }
+
+.link-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--cyan);
+  font-weight: 600;
+  font-size: inherit;
+  font-family: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+}
+.link-btn:hover { color: var(--green); }
+
+/* ============================================================================
+   MODALS (welcome / account)
+   ============================================================================ */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 8, 6, 0.72);
+  display: none;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 60px 20px;
+  overflow-y: auto;
+  z-index: 70;
+}
+.modal-overlay.open { display: flex; }
+
+.modal {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  width: 100%;
+  max-width: 720px;
+  padding: 26px;
+  position: relative;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.5);
+}
+.modal-narrow { max-width: 420px; text-align: center; }
+
+.modal-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  border-radius: 8px;
+  width: 30px;
+  height: 30px;
+  cursor: pointer;
+}
+.modal-close:hover { color: var(--red); border-color: var(--red); }
+
+.welcome-logo { display: flex; justify-content: center; margin-bottom: 12px; }
+.modal-narrow h2 { font-size: 1.25rem; margin-bottom: 8px; }
+.modal-narrow .panel-copy { margin-left: auto; margin-right: auto; }
+
+.welcome-actions { display: flex; flex-direction: column; gap: 9px; margin-top: 4px; }
+.welcome-forget { margin-top: 14px; width: 100%; }
+
+/* ============================================================================
    SIMULATOR
    ============================================================================ */
 .sim-layout {
@@ -1258,6 +1367,8 @@ input[type="range"] { width: 100%; accent-color: var(--green); height: 4px; curs
   .about-name { font-size: 1.5rem; }
   .theme-opt span { display: none; }
   .theme-opt { padding: 5px 10px; }
+  .user-chip-name { display: none; }
+  .user-chip { padding: 5px; }
   .tb-value { font-size: 1.6rem; }
   .toolbar-input, .toolbar-select { width: 100%; }
   .toolbar-spacer { display: none; }

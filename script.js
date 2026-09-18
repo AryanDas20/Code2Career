@@ -90,7 +90,8 @@
         entries: state.entries,
         weeklyTarget: state.weeklyTarget,
         theme: document.body.getAttribute("data-theme"),
-        nextId: state.nextId
+        nextId: state.nextId,
+        account: state.account
       }));
     } catch (err) {
       storageAvailable = false;
@@ -107,6 +108,10 @@
       if (typeof parsed.weeklyTarget === "number") state.weeklyTarget = parsed.weeklyTarget;
       if (typeof parsed.nextId === "number") state.nextId = parsed.nextId;
       if (parsed.theme) document.body.setAttribute("data-theme", parsed.theme);
+      if (parsed.account && typeof parsed.account === "object") {
+        state.account.name = typeof parsed.account.name === "string" ? parsed.account.name : "";
+        state.account.hasChosen = !!parsed.account.hasChosen;
+      }
     } catch (err) {
       storageAvailable = false;
     }
@@ -133,7 +138,8 @@
     historyPage: 1,
     rowsPerPage: 12,
     compareBudget: 5,
-    sim: { carToBus: 0, meatSwap: 0, electricity: 0, flights: 0 }
+    sim: { carToBus: 0, meatSwap: 0, electricity: 0, flights: 0 },
+    account: { name: "", hasChosen: false } // hasChosen = welcome prompt has been answered (named or skipped)
   };
 
   const charts = {};
@@ -1568,6 +1574,344 @@
       : "Log activities to see how your footprint compares against per-capita benchmarks.";
   }
 
+  /* ==========================================================================
+     13d. ACCOUNT — name prompt on entry, shown in header, used in exports
+     ========================================================================== */
+  function displayName() {
+    return (state.account.name || "").trim();
+  }
+
+  function renderUserChip() {
+    const name = displayName();
+    const label = name || "Guest";
+    byId("user-chip-name").textContent = label;
+    byId("user-avatar").textContent = name ? name.trim().charAt(0).toUpperCase() : "?";
+    byId("user-chip").title = name ? `Signed in as ${name} — click to edit` : "Click to add your name";
+  }
+
+  function renderDashboardGreeting() {
+    const name = displayName();
+    const el = byId("dashboard-greeting");
+    const hour = new Date().getHours();
+    const part = hour < 12 ? "morning" : hour < 17 ? "afternoon" : "evening";
+    el.innerHTML = name
+      ? `Good ${part}, <strong>${escapeHtml(name)}</strong> — here's where your footprint stands.`
+      : `Good ${part} — here's where your footprint stands. <button type="button" class="link-btn" id="greeting-add-name">Add your name</button> to personalise this.`;
+
+    const addBtn = byId("greeting-add-name");
+    if (addBtn) addBtn.addEventListener("click", openWelcomeModal);
+  }
+
+  function openWelcomeModal(forceEditMode) {
+    const overlay = byId("welcome-overlay");
+    const isFirstVisit = !state.account.hasChosen;
+    const input = byId("welcome-name-input");
+
+    input.value = state.account.name || "";
+    byId("welcome-close").hidden = isFirstVisit && !forceEditMode ? true : false;
+    byId("welcome-forget").hidden = !state.account.name;
+
+    if (isFirstVisit && !forceEditMode) {
+      byId("welcome-title").textContent = "Welcome to Planet Pulse";
+      byId("welcome-copy").textContent =
+        "Tell us your name and we'll personalise your dashboard and reports. This stays on your device only — nothing is sent anywhere. You can skip this and add it later from the chip in the header.";
+      byId("welcome-skip").hidden = false;
+    } else {
+      byId("welcome-title").textContent = state.account.name ? "Edit your name" : "Add your name";
+      byId("welcome-copy").textContent =
+        "This name appears in the header and on your exported reports. It's stored only in this browser.";
+      byId("welcome-skip").hidden = true;
+    }
+
+    overlay.classList.add("open");
+    setTimeout(() => input.focus(), 30);
+  }
+
+  function closeWelcomeModal() {
+    byId("welcome-overlay").classList.remove("open");
+  }
+
+  function wireAccountEvents() {
+    byId("user-chip").addEventListener("click", () => openWelcomeModal(true));
+    byId("welcome-close").addEventListener("click", closeWelcomeModal);
+    byId("welcome-overlay").addEventListener("click", (e) => {
+      if (e.target.id === "welcome-overlay" && state.account.hasChosen) closeWelcomeModal();
+    });
+
+    byId("welcome-form").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const name = byId("welcome-name-input").value.trim().slice(0, 40);
+      state.account.name = name;
+      state.account.hasChosen = true;
+      saveData();
+      renderUserChip();
+      renderDashboardGreeting();
+      closeWelcomeModal();
+      showToast(name ? `Welcome, ${name}!` : "Name saved.", "");
+    });
+
+    byId("welcome-skip").addEventListener("click", () => {
+      state.account.name = "";
+      state.account.hasChosen = true;
+      saveData();
+      renderUserChip();
+      renderDashboardGreeting();
+      closeWelcomeModal();
+      showToast("No problem — you can add your name anytime from the header.", "");
+    });
+
+    byId("welcome-forget").addEventListener("click", () => {
+      state.account.name = "";
+      saveData();
+      renderUserChip();
+      renderDashboardGreeting();
+      byId("welcome-name-input").value = "";
+      byId("welcome-forget").hidden = true;
+      showToast("Name cleared.", "");
+    });
+  }
+
+  /* ==========================================================================
+     13e. PDF EXPORT
+     ========================================================================== */
+  function exportPDF() {
+    if (!window.jspdf || !window.jspdf.jsPDF) {
+      showToast("PDF library failed to load — check your internet connection and try again.", "error");
+      return;
+    }
+
+    const list = getSortedEntries(getFilteredEntries());
+    const stats = computeStats();
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: "pt", format: "a4" });
+
+    const pageW = doc.internal.pageSize.getWidth();
+    const pageH = doc.internal.pageSize.getHeight();
+    const margin = 44;
+    let y = margin;
+
+    const GREEN = [34, 166, 108];
+    const DARK = [13, 32, 26];
+    const GREY = [110, 125, 118];
+    const LIGHT = [235, 242, 238];
+
+    function ensureSpace(needed) {
+      if (y + needed > pageH - margin) {
+        doc.addPage();
+        y = margin;
+        drawPageHeader();
+      }
+    }
+
+    function drawPageHeader() {
+      doc.setFillColor(...DARK);
+      doc.rect(0, 0, pageW, 6, "F");
+    }
+
+    // --- Cover header -------------------------------------------------------
+    drawPageHeader();
+
+    doc.setFillColor(...GREEN);
+    doc.circle(margin + 12, y + 6, 12, "F");
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.text("P", margin + 12, y + 10, { align: "center" });
+
+    doc.setTextColor(...DARK);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(20);
+    doc.text("Planet Pulse", margin + 32, y + 12);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(...GREY);
+    doc.text("Carbon Footprint Report", margin + 32, y + 27);
+
+    y += 46;
+
+    const name = displayName();
+    doc.setDrawColor(...LIGHT);
+    doc.setLineWidth(1);
+    doc.line(margin, y, pageW - margin, y);
+    y += 20;
+
+    doc.setFontSize(10);
+    doc.setTextColor(...GREY);
+    doc.text("Prepared for", margin, y);
+    doc.text("Generated", pageW - margin, y, { align: "right" });
+    y += 15;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(13);
+    doc.setTextColor(...DARK);
+    doc.text(name || "Guest User", margin, y);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.text(new Date().toLocaleString(), pageW - margin, y, { align: "right" });
+    y += 26;
+
+    // --- Summary KPIs ---------------------------------------------------------
+    const r = currentWeekRange();
+    const weekTotal = sumCO2(entriesInRange(r.fromIso, r.toIso));
+    const kpis = [
+      ["This Week", fmt(weekTotal) + " kg"],
+      ["Weekly Target", fmt(state.weeklyTarget) + " kg"],
+      ["All-Time Total", fmt(stats.totalCO2) + " kg"],
+      ["Eco Score", stats.ecoScore + " (" + stats.grade + ")"]
+    ];
+    const kpiW = (pageW - margin * 2 - 3 * 10) / 4;
+    kpis.forEach((k, i) => {
+      const x = margin + i * (kpiW + 10);
+      doc.setFillColor(...LIGHT);
+      doc.roundedRect(x, y, kpiW, 46, 5, 5, "F");
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.setTextColor(...GREY);
+      doc.text(k[0].toUpperCase(), x + 10, y + 16);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(13);
+      doc.setTextColor(...DARK);
+      doc.text(k[1], x + 10, y + 34);
+    });
+    y += 66;
+
+    // --- Category breakdown table (all-time) ---------------------------------
+    const byType = groupByType(state.entries);
+    const totalAll = sumCO2(state.entries);
+    const rows = Object.keys(FACTORS)
+      .map(t => ({ type: t, ...byType[t] }))
+      .filter(rr => rr.count > 0)
+      .sort((a, b) => b.co2 - a.co2);
+
+    ensureSpace(30);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.setTextColor(...DARK);
+    doc.text("Category Breakdown (All Time)", margin, y);
+    y += 16;
+
+    y = drawTable(doc, {
+      x: margin, width: pageW - margin * 2,
+      colWidths: [0.34, 0.14, 0.18, 0.16, 0.18],
+      headers: ["Activity", "Entries", "Quantity", "CO2e (kg)", "Share"],
+      rows: rows.map(rr => {
+        const f = FACTORS[rr.type];
+        const share = totalAll > 0 ? (rr.co2 / totalAll) * 100 : 0;
+        return [f.label, String(rr.count), fmt(rr.quantity, 1) + " " + f.unit, fmt(rr.co2), fmt(share, 1) + "%"];
+      }),
+      ensureSpace, getY: () => y, setY: (v) => { y = v; }, colors: { GREEN, DARK, GREY, LIGHT }
+    });
+    y += 22;
+
+    // --- Activity log (respects current History filters) ---------------------
+    ensureSpace(30);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.setTextColor(...DARK);
+    doc.text(`Activity Log (${list.length} ${list.length === 1 ? "entry" : "entries"}${hasActiveFilters() ? ", filtered" : ""})`, margin, y);
+    y += 16;
+
+    if (!list.length) {
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.setTextColor(...GREY);
+      doc.text("No activities match the current filters.", margin, y);
+      y += 16;
+    } else {
+      y = drawTable(doc, {
+        x: margin, width: pageW - margin * 2,
+        colWidths: [0.16, 0.24, 0.14, 0.14, 0.32],
+        headers: ["Date", "Activity", "Quantity", "CO2e", "Note"],
+        rows: list.map(e => {
+          const f = FACTORS[e.type];
+          return [prettyDate(e.date), f.label, fmt(e.quantity, e.quantity % 1 === 0 ? 0 : 1) + " " + f.unit, fmt(e.co2) + " kg", e.note || "—"];
+        }),
+        ensureSpace, getY: () => y, setY: (v) => { y = v; }, colors: { GREEN, DARK, GREY, LIGHT }
+      });
+    }
+
+    // --- Footer on every page --------------------------------------------------
+    const pageCount = doc.internal.getNumberOfPages();
+    for (let p = 1; p <= pageCount; p++) {
+      doc.setPage(p);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.setTextColor(...GREY);
+      doc.text("Planet Pulse — emission factors are fixed approximations for estimation, not certified accounting.", margin, pageH - 22);
+      doc.text(`Page ${p} of ${pageCount}`, pageW - margin, pageH - 22, { align: "right" });
+    }
+
+    const fileSafeName = (name || "guest").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+    doc.save(`planet-pulse-report-${fileSafeName}-${todayISO()}.pdf`);
+    showToast("PDF report downloaded.", "");
+  }
+
+  function hasActiveFilters() {
+    const f = state.historyFilters;
+    return !!(f.search || f.type || f.category || (f.range && f.range !== "all"));
+  }
+
+  // Minimal table renderer shared by both PDF tables — wraps text, paginates
+  // via the caller's ensureSpace/getY/setY (so it stays in sync with the
+  // caller's own cursor position rather than tracking a disconnected copy),
+  // and re-draws column headers at the top of every new page.
+  function drawTable(doc, opts) {
+    const { x, width, colWidths, headers, rows, ensureSpace, getY, setY, colors } = opts;
+    const rowH = 20;
+    const padX = 6;
+    const cols = colWidths.map(w => w * width);
+
+    function drawHeader() {
+      const y = getY();
+      doc.setFillColor(...colors.DARK);
+      doc.rect(x, y, width, rowH, "F");
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9);
+      doc.setTextColor(255, 255, 255);
+      let cx = x;
+      headers.forEach((h, i) => {
+        doc.text(h, cx + padX, y + 13.5);
+        cx += cols[i];
+      });
+      setY(y + rowH);
+    }
+
+    drawHeader();
+    let rowsOnThisPage = 0;
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+
+    rows.forEach((row) => {
+      const pageBefore = doc.internal.getCurrentPageInfo().pageNumber;
+      ensureSpace(rowH);
+      const pageAfter = doc.internal.getCurrentPageInfo().pageNumber;
+      if (pageAfter !== pageBefore) {
+        drawHeader();      // re-print column headers at the top of the new page
+        rowsOnThisPage = 0;
+      }
+
+      const y = getY();
+      if (rowsOnThisPage % 2 === 1) {
+        doc.setFillColor(...colors.LIGHT);
+        doc.rect(x, y, width, rowH, "F");
+      }
+
+      doc.setTextColor(...colors.DARK);
+      let cx = x;
+      row.forEach((cell, ci) => {
+        const maxChars = Math.floor(cols[ci] / 4.6);
+        const text = String(cell).length > maxChars ? String(cell).slice(0, maxChars - 1) + "…" : String(cell);
+        doc.text(text, cx + padX, y + 13.5);
+        cx += cols[ci];
+      });
+      setY(y + rowH);
+      rowsOnThisPage++;
+    });
+
+    return getY();
+  }
+
   /* --------------------------------------------------------------------------
      ABOUT PAGE STATS
      -------------------------------------------------------------------------- */
@@ -1786,6 +2130,7 @@
       showToast("Filters reset.", "");
     });
     byId("export-csv").addEventListener("click", exportCSV);
+    byId("export-pdf").addEventListener("click", exportPDF);
 
     // History sorting
     document.querySelectorAll("#history-table th[data-sort]").forEach(th => {
@@ -1880,6 +2225,7 @@
     byId("target-input").value = state.weeklyTarget;
 
     wireEvents();
+    wireAccountEvents();
     updateUnitDisplay();
     renderQuickAdd();
     renderTargetPresets();
@@ -1887,7 +2233,11 @@
     renderCompare();
     renderOffset();
     updateStorageNote();
+    renderUserChip();
     refreshAll();
+    renderDashboardGreeting();
+
+    if (!state.account.hasChosen) openWelcomeModal();
   }
 
   document.addEventListener("DOMContentLoaded", init);
