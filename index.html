@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>CarbonLedger — Daily Carbon Footprint Tracker</title>
+<meta name="description" content="Turn everyday choices into a visible carbon footprint. Log activities, see your breakdown, and stay under your weekly CO₂ target." />
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+
+<link rel="stylesheet" href="style.css" />
+</head>
+<body data-theme="dark">
+
+<!-- ============================================================
+     HEADER
+     ============================================================ -->
+<header class="site-header">
+  <div class="wrap header-inner">
+    <a href="#" class="brand">
+      <span class="brand-leaf">🌿</span>
+      <span class="brand-text">CARBON<span class="brand-accent">LEDGER</span></span>
+    </a>
+
+    <nav class="tabs" id="tabs" aria-label="Sections">
+      <button class="tab active" data-tab="dashboard">Dashboard</button>
+      <button class="tab" data-tab="log">Log Activity</button>
+      <button class="tab" data-tab="history">History</button>
+      <button class="tab" data-tab="target">Target</button>
+      <button class="tab" data-tab="simulator">Simulator</button>
+      <button class="tab" data-tab="learn">Factors</button>
+      <button class="tab tab-about" data-tab="about">About</button>
+    </nav>
+
+    <div class="header-actions">
+      <span class="today-chip" id="today-chip">—</span>
+
+      <div class="theme-switch" id="theme-switch" role="group" aria-label="Colour theme">
+        <button class="theme-opt" data-theme-set="light" title="Light mode">☀<span>Light</span></button>
+        <button class="theme-opt active" data-theme-set="dark" title="Dark mode">☾<span>Dark</span></button>
+        <span class="theme-slider" id="theme-slider"></span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ==========================================================
+       DASHBOARD
+       ========================================================== -->
+  <section class="view active" id="view-dashboard">
+
+    <!-- Weekly target banner -->
+    <div class="target-banner" id="target-banner">
+      <div class="target-banner-top">
+        <div>
+          <span class="tb-label">This week's footprint</span>
+          <span class="tb-value"><span id="tb-current">0.00</span> <small>kg CO₂e</small></span>
+        </div>
+        <div class="tb-right">
+          <span class="tb-label">Weekly target</span>
+          <span class="tb-target"><span id="tb-target">25.00</span> <small>kg CO₂e</small></span>
+        </div>
+      </div>
+
+      <div class="progress-track">
+        <div class="progress-fill" id="progress-fill"></div>
+        <div class="progress-marker" id="progress-marker"></div>
+      </div>
+
+      <div class="target-banner-bottom">
+        <span class="tb-status" id="tb-status">Set a target to start tracking progress.</span>
+        <span class="tb-pace" id="tb-pace"></span>
+      </div>
+    </div>
+
+    <!-- Eco score + streaks + forecast -->
+    <div class="score-row">
+      <div class="panel score-panel">
+        <div class="score-ring-wrap">
+          <svg viewBox="0 0 200 200" class="score-ring">
+            <circle class="sr-track" cx="100" cy="100" r="84" />
+            <circle class="sr-fill" id="score-ring-fill" cx="100" cy="100" r="84" />
+          </svg>
+          <div class="score-center">
+            <span class="score-grade" id="score-grade">—</span>
+            <span class="score-value"><span id="score-value">0</span><small>/100</small></span>
+          </div>
+        </div>
+        <div class="score-text">
+          <span class="panel-tag">Eco Score</span>
+          <h2 id="score-title">Start logging</h2>
+          <p id="score-desc" class="panel-copy">Your score blends how close you stay to target, how consistently you log, and how clean your activity mix is.</p>
+          <div class="score-bars" id="score-bars"></div>
+        </div>
+      </div>
+
+      <div class="panel streak-panel">
+        <div class="panel-head"><h2>Streaks &amp; Forecast</h2></div>
+        <div class="streak-grid">
+          <div class="streak-card">
+            <span class="streak-icon">🔥</span>
+            <span class="streak-value" id="streak-logging">0</span>
+            <span class="streak-label">day logging streak</span>
+          </div>
+          <div class="streak-card">
+            <span class="streak-icon">🌱</span>
+            <span class="streak-value" id="streak-green">0</span>
+            <span class="streak-label">days under daily budget</span>
+          </div>
+          <div class="streak-card">
+            <span class="streak-icon">🔮</span>
+            <span class="streak-value" id="forecast-value">0.0</span>
+            <span class="streak-label">projected week total</span>
+          </div>
+          <div class="streak-card">
+            <span class="streak-icon">🏅</span>
+            <span class="streak-value" id="badge-count">0</span>
+            <span class="streak-label">badges unlocked</span>
+          </div>
+        </div>
+        <p class="forecast-note" id="forecast-note"></p>
+      </div>
+    </div>
+
+    <!-- KPI grid -->
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <span class="kpi-icon">📅</span>
+        <div>
+          <span class="kpi-label">Today</span>
+          <span class="kpi-value" id="kpi-today">0.00</span>
+          <span class="kpi-unit">kg CO₂e</span>
+        </div>
+      </div>
+      <div class="kpi-card accent-cyan">
+        <span class="kpi-icon">📊</span>
+        <div>
+          <span class="kpi-label">This Week</span>
+          <span class="kpi-value" id="kpi-week">0.00</span>
+          <span class="kpi-unit">kg CO₂e</span>
+        </div>
+      </div>
+      <div class="kpi-card accent-violet">
+        <span class="kpi-icon">🗓️</span>
+        <div>
+          <span class="kpi-label">All Time</span>
+          <span class="kpi-value" id="kpi-total">0.00</span>
+          <span class="kpi-unit">kg CO₂e</span>
+        </div>
+      </div>
+      <div class="kpi-card accent-amber">
+        <span class="kpi-icon">📈</span>
+        <div>
+          <span class="kpi-label">Daily Average</span>
+          <span class="kpi-value" id="kpi-avg">0.00</span>
+          <span class="kpi-unit">kg CO₂e / day</span>
+        </div>
+      </div>
+      <div class="kpi-card accent-green">
+        <span class="kpi-icon">🧾</span>
+        <div>
+          <span class="kpi-label">Entries Logged</span>
+          <span class="kpi-value" id="kpi-entries">0</span>
+          <span class="kpi-unit">activities</span>
+        </div>
+      </div>
+      <div class="kpi-card accent-red">
+        <span class="kpi-icon">🔥</span>
+        <div>
+          <span class="kpi-label">Biggest Category</span>
+          <span class="kpi-value small" id="kpi-top-cat">—</span>
+          <span class="kpi-unit" id="kpi-top-cat-value">—</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="panel-grid">
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Emissions by Category</h2>
+          <span class="panel-tag" id="breakdown-scope-label">This week</span>
+        </div>
+        <div class="chart-box"><canvas id="chart-category"></canvas></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Last 7 Days</h2>
+          <span class="panel-tag">Daily totals vs. daily target</span>
+        </div>
+        <div class="chart-box"><canvas id="chart-daily"></canvas></div>
+      </div>
+
+      <div class="panel panel-wide">
+        <div class="panel-head">
+          <h2>Category Breakdown</h2>
+          <div class="scope-switch" id="scope-switch">
+            <button class="scope-btn active" data-scope="week">This Week</button>
+            <button class="scope-btn" data-scope="month">Last 30 Days</button>
+            <button class="scope-btn" data-scope="all">All Time</button>
+          </div>
+        </div>
+        <div class="table-scroll">
+          <table class="mini-table" id="breakdown-table">
+            <thead>
+              <tr><th>Category</th><th>Entries</th><th>Quantity</th><th>CO₂e</th><th>Share</th></tr>
+            </thead>
+            <tbody></tbody>
+            <tfoot></tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Heatmap calendar -->
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Emission Calendar</h2>
+        <div class="heat-legend">
+          <span>Lower</span>
+          <span class="heat-cell heat-0"></span>
+          <span class="heat-cell heat-1"></span>
+          <span class="heat-cell heat-2"></span>
+          <span class="heat-cell heat-3"></span>
+          <span class="heat-cell heat-4"></span>
+          <span>Higher</span>
+        </div>
+      </div>
+      <p class="panel-copy">Each square is one day over the last 12 weeks — darker means a heavier footprint. Hover any square for the exact total.</p>
+      <div class="heatmap-scroll"><div class="heatmap" id="heatmap"></div></div>
+    </div>
+
+    <!-- Achievements -->
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Achievements</h2>
+        <span class="panel-tag" id="achievement-progress">0 / 0 unlocked</span>
+      </div>
+      <div class="badge-grid" id="badge-grid"></div>
+    </div>
+
+    <!-- Equivalents + tips -->
+    <div class="panel-grid">
+      <div class="panel">
+        <div class="panel-head"><h2>What That Equals</h2><span class="panel-tag">This week</span></div>
+        <div class="equiv-grid" id="equiv-grid"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h2>Suggestions</h2><span class="panel-tag">Based on your own data</span></div>
+        <div class="tips-list" id="tips-list"></div>
+      </div>
+    </div>
+
+    <!-- Recent activity -->
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Recent Activity</h2>
+        <button class="btn-outline small" id="goto-history">View all →</button>
+      </div>
+      <div class="table-scroll">
+        <table class="mini-table" id="recent-table">
+          <thead>
+            <tr><th>Date</th><th>Activity</th><th>Quantity</th><th>CO₂e</th><th></th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==========================================================
+       LOG ACTIVITY
+       ========================================================== -->
+  <section class="view" id="view-log">
+    <div class="log-layout">
+
+      <div class="panel">
+        <div class="panel-head">
+          <h2 id="log-form-title">Log an Activity</h2>
+          <span class="panel-tag" id="log-form-tag">New entry</span>
+        </div>
+
+        <form id="log-form" novalidate>
+          <input type="hidden" id="edit-id" value="" />
+
+          <div class="field">
+            <label for="activity-type">Activity type</label>
+            <select id="activity-type" required>
+              <optgroup label="Travel">
+                <option value="car">Car travel</option>
+                <option value="bus">Bus travel</option>
+                <option value="flight">Flight</option>
+              </optgroup>
+              <optgroup label="Home">
+                <option value="electricity">Electricity use</option>
+              </optgroup>
+              <optgroup label="Food">
+                <option value="veg_meal">Vegetarian meal</option>
+                <option value="nonveg_meal">Non-vegetarian meal</option>
+              </optgroup>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="quantity">
+              Quantity <span class="unit-hint" id="unit-hint">(km)</span>
+            </label>
+            <div class="qty-row">
+              <input type="number" id="quantity" min="0" step="0.01" placeholder="e.g. 10" required />
+              <span class="qty-unit" id="qty-unit">km</span>
+            </div>
+            <div class="quick-chips" id="quick-chips"></div>
+            <p class="field-error" id="quantity-error">Enter a quantity greater than zero.</p>
+          </div>
+
+          <div class="field">
+            <label for="entry-date">Date</label>
+            <input type="date" id="entry-date" required />
+          </div>
+
+          <div class="field">
+            <label for="entry-note">Note <span class="optional">(optional)</span></label>
+            <input type="text" id="entry-note" maxlength="80" placeholder="e.g. commute to campus" />
+          </div>
+
+          <div class="live-preview" id="live-preview">
+            <span class="lp-label">Estimated emissions</span>
+            <span class="lp-value"><span id="lp-value">0.00</span> <small>kg CO₂e</small></span>
+            <span class="lp-formula" id="lp-formula">—</span>
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" class="btn-primary btn-full" id="log-submit-btn">Add Entry</button>
+            <button type="button" class="btn-outline" id="cancel-edit-btn" hidden>Cancel</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h2>Quick Add</h2><span class="panel-tag">One tap, logged today</span></div>
+        <p class="panel-copy">Common daily activities with typical quantities — tap to log instantly against today's date.</p>
+        <div class="quickadd-grid" id="quickadd-grid"></div>
+
+        <div class="panel-head" style="margin-top:22px;"><h2>Today's Entries</h2></div>
+        <div id="today-entries" class="today-entries"></div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ==========================================================
+       HISTORY
+       ========================================================== -->
+  <section class="view" id="view-history">
+    <div class="toolbar">
+      <input type="text" id="history-search" class="toolbar-input" placeholder="Search notes or activity…" />
+
+      <select id="filter-type" class="toolbar-select">
+        <option value="">All activity types</option>
+        <option value="car">Car travel</option>
+        <option value="bus">Bus travel</option>
+        <option value="flight">Flight</option>
+        <option value="electricity">Electricity</option>
+        <option value="veg_meal">Vegetarian meal</option>
+        <option value="nonveg_meal">Non-vegetarian meal</option>
+      </select>
+
+      <select id="filter-category" class="toolbar-select">
+        <option value="">All categories</option>
+        <option value="Travel">Travel</option>
+        <option value="Home">Home</option>
+        <option value="Food">Food</option>
+      </select>
+
+      <select id="filter-range" class="toolbar-select">
+        <option value="all">All dates</option>
+        <option value="today">Today</option>
+        <option value="week">This week</option>
+        <option value="month">Last 30 days</option>
+        <option value="custom">Custom range…</option>
+      </select>
+
+      <div class="custom-range" id="custom-range" hidden>
+        <input type="date" id="filter-from" class="toolbar-select" />
+        <span class="range-sep">→</span>
+        <input type="date" id="filter-to" class="toolbar-select" />
+      </div>
+
+      <div class="toolbar-spacer"></div>
+
+      <button class="btn-outline" id="export-csv">Export CSV</button>
+      <button class="btn-outline danger" id="clear-filters">Reset Filters</button>
+    </div>
+
+    <div class="history-summary" id="history-summary"></div>
+
+    <div class="table-scroll">
+      <table class="data-table" id="history-table">
+        <thead>
+          <tr>
+            <th data-sort="date">Date</th>
+            <th data-sort="typeLabel">Activity</th>
+            <th data-sort="category">Category</th>
+            <th data-sort="quantity">Quantity</th>
+            <th data-sort="co2">CO₂e (kg)</th>
+            <th>Note</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="history-body"></tbody>
+      </table>
+    </div>
+
+    <div class="pagination" id="history-pagination"></div>
+  </section>
+
+  <!-- ==========================================================
+       TARGET
+       ========================================================== -->
+  <section class="view" id="view-target">
+    <div class="panel-grid">
+
+      <div class="panel">
+        <div class="panel-head"><h2>Weekly CO₂ Target</h2><span class="panel-tag">kg CO₂e per week</span></div>
+        <p class="panel-copy">Set the ceiling you want to stay under each week. The dashboard tracks your progress against it and flags the moment you go over.</p>
+
+        <form id="target-form">
+          <div class="field">
+            <label for="target-input">Target (kg CO₂e / week)</label>
+            <input type="number" id="target-input" min="1" step="0.5" required />
+          </div>
+
+          <div class="preset-row" id="target-presets"></div>
+
+          <button type="submit" class="btn-primary btn-full">Save Target</button>
+        </form>
+
+        <div class="target-readout" id="target-readout"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h2>Weekly Performance</h2><span class="panel-tag">Last 6 weeks vs. target</span></div>
+        <div class="chart-box"><canvas id="chart-weekly"></canvas></div>
+      </div>
+
+      <div class="panel panel-wide">
+        <div class="panel-head"><h2>Week-by-Week Log</h2></div>
+        <div class="table-scroll">
+          <table class="mini-table" id="weekly-table">
+            <thead>
+              <tr><th>Week starting</th><th>Entries</th><th>Total CO₂e</th><th>Target</th><th>Difference</th><th>Result</th></tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ==========================================================
+       SIMULATOR
+       ========================================================== -->
+  <section class="view" id="view-simulator">
+
+    <div class="panel">
+      <div class="panel-head">
+        <h2>What-If Simulator</h2>
+        <span class="panel-tag">Applied to your last 30 days</span>
+      </div>
+      <p class="panel-copy">Move the sliders to model lifestyle changes against your real logged data. The projection recalculates instantly — no guessing what a habit change is actually worth.</p>
+
+      <div class="sim-layout">
+        <div class="sim-controls">
+          <div class="sim-row">
+            <label for="sim-car-to-bus">Shift <span class="sim-val" id="sim-car-to-bus-val">0%</span> of car km to bus</label>
+            <input type="range" id="sim-car-to-bus" min="0" max="100" step="5" value="0" />
+          </div>
+          <div class="sim-row">
+            <label for="sim-meat-swap">Swap <span class="sim-val" id="sim-meat-swap-val">0%</span> of non-veg meals for veg</label>
+            <input type="range" id="sim-meat-swap" min="0" max="100" step="5" value="0" />
+          </div>
+          <div class="sim-row">
+            <label for="sim-electricity">Cut electricity use by <span class="sim-val" id="sim-electricity-val">0%</span></label>
+            <input type="range" id="sim-electricity" min="0" max="100" step="5" value="0" />
+          </div>
+          <div class="sim-row">
+            <label for="sim-flights">Reduce flying by <span class="sim-val" id="sim-flights-val">0%</span></label>
+            <input type="range" id="sim-flights" min="0" max="100" step="5" value="0" />
+          </div>
+          <button class="btn-outline" id="sim-reset">Reset Simulation</button>
+        </div>
+
+        <div class="sim-results">
+          <div class="sim-result-card">
+            <span class="srx-label">Current (30 days)</span>
+            <span class="srx-value" id="sim-before">0.00</span>
+            <span class="srx-unit">kg CO₂e</span>
+          </div>
+          <div class="sim-arrow">→</div>
+          <div class="sim-result-card highlight">
+            <span class="srx-label">Simulated</span>
+            <span class="srx-value" id="sim-after">0.00</span>
+            <span class="srx-unit">kg CO₂e</span>
+          </div>
+          <div class="sim-saving" id="sim-saving">No change yet — move a slider.</div>
+        </div>
+      </div>
+
+      <div class="chart-box sim-chart"><canvas id="chart-sim"></canvas></div>
+    </div>
+
+    <div class="panel-grid">
+      <div class="panel">
+        <div class="panel-head"><h2>Offset Calculator</h2><span class="panel-tag">Neutralise your footprint</span></div>
+        <p class="panel-copy">What it would take to cancel out your emissions so far.</p>
+        <div class="offset-grid" id="offset-grid"></div>
+        <p class="offset-note">Offset costs are rough market averages (₹850–₹1,700 per tonne CO₂e) and vary widely by provider and project quality.</p>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h2>How You Compare</h2><span class="panel-tag">Annualised per-person averages</span></div>
+        <p class="panel-copy">Your daily average, projected across a year, set against published per-capita figures.</p>
+        <div class="chart-box"><canvas id="chart-benchmark"></canvas></div>
+        <p class="benchmark-note" id="benchmark-note"></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==========================================================
+       FACTORS / LEARN
+       ========================================================== -->
+  <section class="view" id="view-learn">
+    <div class="panel">
+      <div class="panel-head"><h2>Emission Factors Used</h2><span class="panel-tag">Fixed values</span></div>
+      <p class="panel-copy">Every entry is converted to kilograms of CO₂ equivalent using these fixed factors. CO₂e = quantity × factor.</p>
+      <div class="table-scroll">
+        <table class="mini-table" id="factors-table">
+          <thead><tr><th>Activity</th><th>Category</th><th>Factor</th><th>Unit</th><th>Example</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2>Compare Activities</h2><span class="panel-tag">Same emissions, different choices</span></div>
+      <p class="panel-copy">Pick a budget of CO₂e and see how far it stretches across each activity type.</p>
+      <div class="field compare-field">
+        <label for="compare-budget">Budget: <span class="weight-value" id="compare-budget-value">5.0 kg CO₂e</span></label>
+        <input type="range" id="compare-budget" min="0.5" max="50" step="0.5" value="5" />
+      </div>
+      <div class="compare-grid" id="compare-grid"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2>Data &amp; Storage</h2></div>
+      <div class="settings-row">
+        <div>
+          <strong>Load sample data</strong>
+          <p class="panel-copy">Fills the tracker with two weeks of realistic entries — useful for a demo run.</p>
+        </div>
+        <button class="btn-outline" id="load-sample">Load Sample Data</button>
+      </div>
+      <div class="settings-row">
+        <div>
+          <strong>Clear all entries</strong>
+          <p class="panel-copy">Permanently deletes every logged activity. Your weekly target is kept.</p>
+        </div>
+        <button class="btn-outline danger" id="clear-all">Clear All Data</button>
+      </div>
+      <p class="storage-note" id="storage-note"></p>
+    </div>
+  </section>
+
+  <!-- ==========================================================
+       ABOUT
+       ========================================================== -->
+  <section class="view" id="view-about">
+
+    <div class="about-hero panel">
+      <div class="about-photo-wrap">
+        <img
+          id="about-photo"
+          class="about-photo"
+          src="https://media.licdn.com/dms/image/v2/D5603AQGmu5TEkYEF5g/profile-displayphoto-crop_800_800/B56aC1dl5_GQAI-/0/1789750831326?e=1791417600&v=beta&t=Xpb4HOapqicfTIQlD-8OxlKDGhTM1eD-cfR2kKtmRqc"
+          alt="Aryan Das"
+          referrerpolicy="no-referrer"
+        />
+
+      </div>
+
+      <div class="about-intro">
+        <span class="panel-tag">About the developer</span>
+        <h2 class="about-name">Aryan Das</h2>
+        <p class="about-role">First-year B.Tech CSE · Lovely Professional University (LPU)</p>
+
+        <p class="about-bio">
+          This carbon footprint tracker is my project for <strong>Code2Career</strong> — my third hackathon.
+          I built it end to end with plain HTML, CSS and JavaScript: no frameworks, no backend, just a focus on
+          turning ordinary daily choices into a number people can actually see and act on.
+        </p>
+
+        <div class="about-links">
+          <a class="about-link primary" href="https://www.linkedin.com/in/aryandas-iit/" target="_blank" rel="noopener noreferrer">
+            <span class="al-icon">in</span>
+            <span>
+              <strong>LinkedIn</strong>
+              <small>linkedin.com/in/aryandas-iit</small>
+            </span>
+          </a>
+          <div class="about-link">
+            <span class="al-icon">🎓</span>
+            <span>
+              <strong>Lovely Professional University</strong>
+              <small>B.Tech Computer Science, Year 1</small>
+            </span>
+          </div>
+          <div class="about-link">
+            <span class="al-icon">🏆</span>
+            <span>
+              <strong>Code2Career Hackathon</strong>
+              <small>3rd hackathon project</small>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel-grid">
+      <div class="panel">
+        <div class="panel-head"><h2>About This Project</h2><span class="panel-tag">CarbonLedger</span></div>
+        <p class="panel-copy">
+          CarbonLedger converts everyday activities — a commute, a meal, an hour of electricity — into kilograms
+          of CO₂ equivalent using fixed emission factors, then surfaces the result through a live dashboard,
+          a weekly target system, and a what-if simulator that models the impact of habit changes on real logged data.
+        </p>
+        <div class="stack-grid">
+          <div class="stack-item"><span class="stack-icon">🧱</span><strong>HTML5</strong><small>Semantic structure</small></div>
+          <div class="stack-item"><span class="stack-icon">🎨</span><strong>CSS3</strong><small>Custom properties, responsive grid</small></div>
+          <div class="stack-item"><span class="stack-icon">⚙️</span><strong>JavaScript</strong><small>Vanilla, no framework</small></div>
+          <div class="stack-item"><span class="stack-icon">📊</span><strong>Chart.js</strong><small>Data visualisation</small></div>
+          <div class="stack-item"><span class="stack-icon">💾</span><strong>localStorage</strong><small>Offline persistence</small></div>
+          <div class="stack-item"><span class="stack-icon">🌗</span><strong>Theming</strong><small>Dark &amp; light modes</small></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h2>Feature Highlights</h2><span class="panel-tag">What's inside</span></div>
+        <ul class="feature-list">
+          <li><strong>Activity logging</strong> with live CO₂ preview and one-tap quick adds</li>
+          <li><strong>Six fixed emission factors</strong> across travel, home and food</li>
+          <li><strong>Dashboard</strong> with category breakdown, 7-day trend and emission calendar</li>
+          <li><strong>Weekly target</strong> with pace tracking and exceeded-target alerts</li>
+          <li><strong>History</strong> filterable by type, category, date range and free text</li>
+          <li><strong>Eco Score</strong> grading consistency, target adherence and activity mix</li>
+          <li><strong>What-if simulator</strong> modelling habit changes on your real data</li>
+          <li><strong>Achievements</strong>, streaks, offset calculator and CSV export</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2>Project Stats</h2><span class="panel-tag">Live from your session</span></div>
+      <div class="about-stats" id="about-stats"></div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <p>CarbonLedger — emission factors are fixed approximations for estimation, not certified accounting.</p>
+  </div>
+</footer>
+
+<div class="toast-container" id="toast-container"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<script src="script.js"></script>
+</body>
+</html>
