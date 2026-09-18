@@ -85,7 +85,7 @@ Overview of developer credentials, tech stack choices, and underlying design phi
 ![About Screen](https://github.com/user-attachments/assets/ef765b37-153b-4262-a767-ace556ae9f43)
 
 ### 8. Detailed Report on Your Carbon Footprint
-![About Screen]([https://github.com/user-attachments/assets/ef765b37-153b-4262-a767-ace556ae9f43](https://github.com/user-attachments/assets/ebe634f8-9ab6-4be0-88d6-da3fdc489b25))
+![About Screen](https://github.com/user-attachments/assets/dd7dc656-bce3-4ba0-a1db-ddad93b128a8)
 ---
 
 ## 🧮 Standard Conversion Factors
